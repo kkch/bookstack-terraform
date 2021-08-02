@@ -1,0 +1,17 @@
+---
+- name: Provision backup VM for Bookstack in EU cloud.
+  hosts: localhost
+  gather_facts: false
+
+- name: Include Instance playbook
+  import_playbook: instance.yaml
+
+- name: Include users playbook 
+  import_playbook: users.yaml
+  tags:
+    - users
+    
+- name: Include LVM Playbook
+  import_playbook: lvm.yaml
+  tags:
+    - lvm

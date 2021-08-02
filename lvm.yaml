@@ -1,0 +1,45 @@
+---
+- name: Create LVM 
+  become: yes
+  hosts: all
+
+  tasks:
+    - name: Create a new primary partition for LVM
+      community.general.parted:
+        device: /dev/vdc
+        number: 1
+        flags: [ lvm ]
+        state: present
+
+    - name: Create VG
+      community.general.lvg:
+        vg: bookVG
+        pvs: /dev/vdc1
+        state: present
+
+    - name: create LV
+      community.general.lvol:
+        vg: bookVG
+        lv: bookLV
+        size: 9.9g
+        state: present
+
+    - name: Format the disk partition
+      community.general.filesystem:
+        fstype: xfs
+        dev: /dev/mapper/bookVG-bookLV
+
+    - name: Create a dir for Mount point
+      ansible.builtin.file:
+        path: /book
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Mount Partition
+      ansible.posix.mount:
+        path: /book
+        src: /dev/mapper/bookVG-bookLV
+        state: mounted
+        fstype: xfs

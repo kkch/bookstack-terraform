@@ -1,0 +1,80 @@
+---
+- name: Deploy Bookstack
+  hosts: all
+  become: yes
+  vars_files:
+    - bookstack_vars.yaml
+    - vault.yaml
+  
+  tasks:
+    - name: Update cache
+      apt:
+        update_cache: yes
+
+    - name: Update all the packages
+      apt:
+        name: "*"
+        state: latest
+
+    - name: Remove old docker packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - "{{ uninstall }}"
+
+    - name: Install required packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - "{{ packages }}"
+
+    - name: Create a dir for SSL
+      ansible.builtin.file:
+        path: /etc/nginx/ssl
+        state: directory
+      tags: nginx
+
+    - name: Copy SSL certs
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/ssl/"
+        dest: /etc/nginx/ssl
+      tags: nginx
+    
+    - name: Copy nginx conf file
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/kb.example.com
+        dest: /etc/nginx/sites-available
+      tags: nginx
+
+    - name: Create a Symlink of kb.example.com
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/kb.example.com
+        dest: /etc/nginx/sites-enabled/kb.example.com
+        state: link
+      tags: nginx
+
+    - name: Start nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+        enabled: yes
+      tags: nginx
+
+    - name: Reboot host for DNS config to take effect, waits 120 sec after restart
+      reboot:
+        post_reboot_delay: 60
+        msg: "Rebooting machine for DNS confg to take Effect"
+      tags: reboot
+
+- name: Include docker-compose playbook
+  import_playbook: install-docker.yaml
+
+- name: Include LVM playbook
+  import_playbook: lvm.yaml
+  tags: lvm
+
+- name: Include backup playbook
+  import_playbook: backup.yaml
+  tags: backup

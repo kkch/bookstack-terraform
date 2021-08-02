@@ -1,0 +1,22 @@
+---
+- name: Backup Script and Cron Tab
+  hosts: all
+  become: yes
+  vars_files:
+    - vault.yaml
+  tasks:
+    - name: Copy backup script
+      ansible.builtin.template:
+        dest: /root/backup.sh
+        src: "{{ playbook_dir }}/backup.j2"
+        owner: root
+        group: root
+        mode: '0750'
+
+    - name: copy corn job file
+      ansible.builtin.copy:
+        dest: /etc/cron.d/
+        src: "{{ playbook_dir }}/backup_bookstack"
+        owner: root
+        group: root
+        mode: '0644'

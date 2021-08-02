@@ -1,0 +1,99 @@
+---
+- name: Bookstack Docker-compose Playbook
+  hosts: all
+  become: yes
+  vars_files:
+    - bookstack_vars.yaml
+    - vault.yaml
+
+  tasks: 
+    - name: Install python docker sdk
+      ansible.builtin.shell:
+        cmd: |
+          pip3 install docker 
+          pip3 install docker-compose
+
+    - name: check if docker gpg exists
+      ansible.builtin.stat:
+        path: /usr/share/keyrings/docker-archive-keyring.gpg
+      register: gpg
+
+    - name: Add docker gpg keys 
+      ansible.builtin.shell: 
+        cmd: |
+           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+      when: not gpg.stat.exists
+
+    - name: Add docker repo
+      ansible.builtin.shell:
+        cmd: |
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+          $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Install docker 
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: latest
+        update_cache: yes
+      with_items:
+        - "{{ docker }}"
+
+    - name: Install docker-compose
+      ansible.builtin.shell:
+        cmd: |
+          curl -L "https://github.com/docker/compose/releases/download/1.29.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+
+    - name : Installing Bookstack using docker-compose
+      community.docker.docker_compose:
+        project_name: bookstack
+        state: present
+        definition:
+          version: '2'
+          services:
+            bookstack:
+              image: ghcr.io/linuxserver/bookstack
+              container_name: bookstack
+              environment:
+                - PUID=1000
+                - PGID=1000
+                - APP_URL=https://{{appurl}}
+                - DB_HOST=bookstack_db
+                - DB_USER=bookstack
+                - DB_PASS={{ mysql }}
+                - DB_DATABASE=bookstackapp
+              volumes:
+                - /book:/config
+              networks:
+                - bookstack
+              ports:
+                - 8080:80
+              restart: unless-stopped
+              depends_on:
+                - bookstack_db
+            bookstack_db:
+              image: ghcr.io/linuxserver/mariadb
+              container_name: bookstack_db
+              environment:
+                - PUID=1000
+                - PGID=1000
+                - MYSQL_ROOT_PASSWORD={{ mysql_root }}
+                - TZ=America/Chicago
+                - MYSQL_DATABASE=bookstackapp
+                - MYSQL_USER=bookstack
+                - MYSQL_PASSWORD={{ mysql }}
+              volumes:
+                - /book:/config
+              networks:
+                - bookstack
+              restart: unless-stopped
+          networks:
+            bookstack:
+              driver: bridge
+              ipam:
+                driver: default
+                config:
+                  - subnet: "192.168.1.0/24"
+                    gateway: "192.168.1.1"
+      tags: docker-compose
+

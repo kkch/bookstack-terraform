@@ -1,0 +1,33 @@
+---
+- name: Provision SRE Team Members 
+  become: yes
+  vars_files:
+    - user_vars.yaml
+    - instance_vars.yaml
+  hosts: all 
+  
+  tasks:
+    - name: create users
+      ansible.builtin.user:
+        name: "{{ item }}"
+        shell: /bin/bash
+        state: present
+        groups: sudo
+        append: yes
+      with_items:
+        - "{{ users }}" 
+    
+    - name: Add SSH keys
+      ansible.posix.authorized_key:
+        user: "{{ item }}"
+        state: present
+        key: "{{ lookup('file', '{{playbook_dir}}/keys/{{ item }}.pub') }}"
+      with_items:
+        - "{{ users }}"
+
+    - name: Allow sudo users to sudo without a password
+      ansible.builtin.lineinfile:
+        path: "/etc/sudoers" 
+        state: "present"
+        regex: "^%sudo"
+        line: "%sudo ALL=(ALL) NOPASSWD: ALL"

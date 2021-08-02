@@ -1,0 +1,20 @@
+#! /bin/bash
+TODAY=$(date +'%m%d%Y')
+REMOTE_HOST=sre-bookstack-backup
+mkdir -p /backup/"$TODAY"
+DIR=/book
+if [ -d "$DIR" ]
+then 
+	docker exec bookstack_db sh -c 'exec mysqldump --all-databases -uroot -p"{{ mysql_root }}"' > "$DIR"/bookstack.sql
+	sleep 30
+	echo "[$TODAY] - Backingup files to $REMOTE_HOST host in EU cloud"
+	rsync -e "ssh -i /home/ubuntu/.ssh/id_rsa" /book/ ubuntu@172.19.112.224:/backup  -vrzaAX
+fi
+# Deleting old files 
+if [ `find /tmp/bookstack* -mtime +30` ] 
+then
+	echo "[$TODAY] - Deleting olderfiles"
+	find /tmp -mtime +30 -name bookstack_backup* -exec rm -rf {} \;
+else
+	echo "[$TODAY] - No files older than 30 days found"
+fi

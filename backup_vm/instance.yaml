@@ -1,0 +1,38 @@
+---
+- name: Provision VM in Openstack and attach floating_ip 
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - instance_vars.yaml
+
+  tasks:
+    - name: Create a new instance and attaches to a network and passes metadata to the instance
+      openstack.cloud.server:
+           state: present
+           cloud: "{{ cloud }}"
+           name: "{{ vm_name }}"
+           image: "{{  image }}"
+           network: "{{ network }}"
+           key_name: "{{ key_name }}"
+           timeout: 200
+           flavor: "{{ flavor }}"
+           security_groups: "{{ security_groups }}"
+           floating_ips: "{{ floating_ip_address }}"
+           meta:
+             hostname: "{{ vm_name }}"
+
+    - name: create 40g test volume
+      openstack.cloud.volume:
+        state: present
+        cloud: "{{ cloud }}"
+        size: "{{ size }}"
+        display_name: "{{ vol_name }}"
+
+    - name: attach volume to host
+      openstack.cloud.server_volume:
+        state: present
+        cloud: "{{ cloud }}"
+        server: "{{ vm_name }}"
+        volume: "{{ vol_name }}"
+        device: /dev/vdc
+         

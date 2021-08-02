@@ -1,0 +1,23 @@
+---
+uninstall:
+  - docker
+  - docker-engine
+  - docker.io
+  - containerd
+  - runc
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - python3-pip
+  - nginx
+
+docker:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+appurl: kb.example.com

@@ -1,0 +1,13 @@
+---
+vm_name: sre-bookstack-backup
+network: private
+image: 7d865539-d1ac-4074-8352-f52bf6e9398f
+flavor: minimal.kvm
+key_name: kchinthaguntla
+cloud: support-eu
+floating_ip_address: 
+  - 172.19.112.224
+security_groups:
+  - SRE-SG
+size: 100
+vol_name: sre-bookstack-backup-vol
